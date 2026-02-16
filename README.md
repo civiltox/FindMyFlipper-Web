@@ -13,7 +13,7 @@ A user-friendly vibe-coded web interface for tracking your Flipper Zero devices 
 
 ## Prerequisites
 
-1. **Flipper Zero** with Find My Flipper app installed
+1. **Flipper Zero** with [Find My Flipper](https://github.com/MatthewKuKanich/FindMyFlipper) app installed
 2. **.keys file** generated using the Find My Flipper repository
 3. **Apple ID** for authentication
 4. **Anisette server** for spoofing
@@ -36,16 +36,16 @@ docker run -d --restart always --name anisette -p 6969:6969 dadoum/anisette-v3-s
 git clone https://github.com/civiltox/FindMyFlipper-Web
 ```
 
-2. **Make a Python venv (virtual environment)**
+2. **Create a Python virtual environment:**
 
 ```bash
 python -m venv venv
 ```
 
-3. **Activate the venv**
+3. **Activate the virtual environment:**
 
 ```bash
-# Linux/macOS (Unix)
+# Linux/macOS
 source venv/bin/activate
 # Windows
 venv/Scripts/activate.bat
@@ -121,10 +121,10 @@ The server will start on `http://localhost:8000`
 - Make sure anisette server is running
 
 ### "No reports found"
-- Bring your Flipper to a populated area
+- Bring your Flipper near another Apple device
 - Wait a few hours for reports to accumulate
-- Lower the broadcast interval on your Flipper (1 second recommended)
-- Increase power for better range
+- Lower the broadcast interval on the Find My Flipper app
+- Increase transmission power on the Find My Flipper app
 
 ### "No key files found"
 - Make sure your .keys file is uploaded
