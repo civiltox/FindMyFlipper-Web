@@ -22,6 +22,18 @@ def check_anisette():
         print("   docker run -d --restart always --name anisette -p 6969:6969 dadoum/anisette-v3-server")
         sys.exit(1)
 
+def create_directories():
+    required_dirs = ["static", "keys"]
+
+    created = False
+    for directory in required_dirs:
+        if not os.path.exists(directory):
+            os.makedirs(directory, exist_ok=True)
+            created = True
+
+    if created:
+        print("Creating directories...")
+
 def check_dependencies():
     try:
         import flask
@@ -41,6 +53,7 @@ def start_server():
 def main():
     print_header()
     check_anisette()
+    create_directories()
     check_dependencies()
     start_server()
 

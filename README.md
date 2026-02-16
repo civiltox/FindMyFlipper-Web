@@ -51,7 +51,7 @@ source venv/bin/activate
 venv/Scripts/activate.bat
 ```
 
-3. **Install dependencies:**
+4. **Install dependencies:**
 
 ```bash
 pip install -r requirements.txt
