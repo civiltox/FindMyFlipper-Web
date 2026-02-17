@@ -2,768 +2,1453 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Find My Flipper</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        :root {
+            --bg: #0e0f11;
+            --surface: #17191d;
+            --surface2: #1f2228;
+            --border: #2a2d35;
+            --accent: #4ade80;
+            --accent-dim: rgba(74, 222, 128, 0.12);
+            --accent-glow: rgba(74, 222, 128, 0.25);
+            --danger: #f87171;
+            --warn: #fb923c;
+            --text: #e8eaed;
+            --text-muted: #6b7280;
+            --text-dim: #9ca3af;
+            --panel-height: 340px;
+            --tab-bar-height: 64px;
+            --header-height: 56px;
         }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            background: #f5f5f7;
-            color: #1d1d1f;
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        html, body {
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
         }
 
-        .header {
-            background: white;
-            border-bottom: 1px solid #d2d2d7;
-            padding: 1rem 2rem;
+        /* ── HEADER ── */
+        .app-header {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: var(--header-height);
+            background: #0e0f11;
+            border-bottom: 1px solid var(--border);
             display: flex;
+            align-items: center;
             justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            padding: 0 1rem;
+            z-index: 500;
         }
 
-        .header h1 {
-            font-size: 1.5rem;
-            font-weight: 600;
-        }
-
-        .header-actions {
+        .app-title {
             display: flex;
-            gap: 1rem;
             align-items: center;
-        }
-
-        .btn {
-            padding: 0.5rem 1rem;
-            border: none;
-            border-radius: 8px;
-            font-size: 0.9rem;
-            cursor: pointer;
-            transition: all 0.2s;
+            gap: 0.5rem;
+            font-family: 'DM Mono', monospace;
+            font-size: 1rem;
             font-weight: 500;
+            letter-spacing: -0.02em;
         }
 
-        .btn-primary {
-            background: #0071e3;
-            color: white;
+        .title-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--accent);
+            box-shadow: 0 0 8px var(--accent-glow);
+            animation: pulse-dot 2s ease-in-out infinite;
         }
 
-        .btn-primary:hover {
-            background: #0077ed;
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
         }
 
-        .btn-secondary {
-            background: #f5f5f7;
-            color: #1d1d1f;
-        }
-
-        .btn-secondary:hover {
-            background: #e8e8ed;
-        }
-
-        .container {
+        .header-right {
             display: flex;
-            height: calc(100vh - 65px);
+            align-items: center;
+            gap: 0.5rem;
         }
 
-        .sidebar {
-            width: 350px;
-            background: white;
-            border-right: 1px solid #d2d2d7;
-            overflow-y: auto;
-            padding: 1.5rem;
+        .last-update {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            display: none;
         }
 
-        .sidebar h2 {
-            font-size: 1.2rem;
-            margin-bottom: 1rem;
-            font-weight: 600;
-        }
+        @media (min-width: 480px) { .last-update { display: block; } }
 
-        .device-list {
-            margin-bottom: 2rem;
-        }
-
-        .device-item {
-            padding: 1rem;
-            background: #f5f5f7;
+        .icon-btn {
+            width: 36px; height: 36px;
             border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text-dim);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.15s;
+        }
+
+        .icon-btn:active { transform: scale(0.93); background: var(--surface2); }
+
+        /* ── MAP ── */
+        #map {
+            position: fixed;
+            top: var(--header-height);
+            left: 0; right: 0;
+            bottom: 0;
+            z-index: 0;
+        }
+
+        /* Leaflet attribution styling */
+        .leaflet-control-attribution {
+            background: rgba(14,15,17,0.85) !important;
+            color: var(--text-muted) !important;
+        }
+        .leaflet-control-attribution a { color: var(--accent) !important; }
+
+        /* Custom marker */
+        .custom-marker {
+            width: 36px; height: 36px;
+            background: var(--accent);
+            border: 3px solid white;
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+        }
+
+        .custom-marker.selected {
+            background: #60a5fa;
+            width: 44px; height: 44px;
+        }
+
+        /* ── BOTTOM PANEL ── */
+        .bottom-panel {
+            position: fixed;
+            left: 0; right: 0;
+            bottom: var(--tab-bar-height);
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            border-radius: 16px 16px 0 0;
+            z-index: 400;
+            transform: translateY(calc(100% - 60px));
+            transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+            max-height: calc(100vh - var(--header-height) - var(--tab-bar-height) - 40px);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .bottom-panel.peek { transform: translateY(calc(100% - 60px)); }
+        .bottom-panel.half { transform: translateY(0); }
+
+        .panel-handle-zone {
+            padding: 10px 0 4px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: grab;
+            flex-shrink: 0;
+        }
+
+        .panel-handle-zone:active { cursor: grabbing; }
+
+        .panel-handle {
+            width: 40px; height: 4px;
+            border-radius: 2px;
+            background: var(--border);
+        }
+
+        .panel-peek-label {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+            font-family: 'DM Mono', monospace;
+            letter-spacing: 0.05em;
+        }
+
+        .panel-content {
+            overflow-y: auto;
+            flex: 1;
+            padding: 0 1rem 1rem;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* ── TABS ── */
+        .tab-bar {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            height: var(--tab-bar-height);
+            background: #0e0f11;
+            border-top: 1px solid var(--border);
+            display: flex;
+            z-index: 600;
+        }
+
+        .tab-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            cursor: pointer;
+            color: var(--text-muted);
+            transition: color 0.2s;
+            font-size: 0.68rem;
+            font-weight: 500;
+            letter-spacing: 0.02em;
+            padding-bottom: env(safe-area-inset-bottom, 0);
+        }
+
+        .tab-item.active { color: var(--accent); }
+
+        .tab-icon {
+            font-size: 1.25rem;
+            transition: transform 0.2s;
+        }
+
+        .tab-item.active .tab-icon { transform: scale(1.1); }
+
+        /* ── TAB VIEWS ── */
+        .tab-view {
+            display: none;
+            height: 100%;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .tab-view.active { display: block; }
+
+        /* ── DESKTOP SIDEBAR ── */
+        @media (min-width: 768px) {
+            .tab-bar { display: none; }
+            .bottom-panel { display: none; }
+
+            #map {
+                left: 320px;
+                bottom: 0;
+            }
+
+            .desktop-sidebar {
+                position: fixed;
+                top: var(--header-height);
+                left: 0;
+                width: 320px;
+                bottom: 0;
+                background: var(--surface);
+                border-right: 1px solid var(--border);
+                overflow-y: auto;
+                z-index: 200;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .last-update { display: block; }
+        }
+
+        @media (max-width: 767px) {
+            .desktop-sidebar { display: none; }
+        }
+
+        /* ── DEVICE LIST ── */
+        .section-header {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.7rem;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            padding: 1rem 0 0.5rem;
+        }
+
+        .device-card {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 0.8rem 1rem;
             margin-bottom: 0.5rem;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
         }
 
-        .device-item:hover {
-            background: #e8e8ed;
+        .device-card:active { transform: scale(0.98); }
+
+        .device-card.active {
+            border-color: var(--accent);
+            background: var(--accent-dim);
         }
 
-        .device-item.active {
-            background: #0071e3;
-            color: white;
+        .device-dot {
+            width: 10px; height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            background: var(--text-muted);
         }
+
+        .device-dot.online {
+            background: var(--accent);
+            box-shadow: 0 0 6px var(--accent-glow);
+        }
+
+        .device-info { flex: 1; min-width: 0; }
 
         .device-name {
             font-weight: 600;
-            margin-bottom: 0.3rem;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .device-name-text {
-            flex: 1;
+            font-size: 0.9rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .device-time {
-            font-size: 0.85rem;
-            opacity: 0.7;
+            font-family: 'DM Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: 2px;
         }
 
-        .location-info {
-            background: #f5f5f7;
-            padding: 1rem;
-            border-radius: 8px;
-            margin-top: 1rem;
-        }
-
-        .location-info h3 {
-            font-size: 1rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .location-detail {
+        .device-actions {
             display: flex;
-            justify-content: space-between;
-            padding: 0.5rem 0;
-            border-bottom: 1px solid #d2d2d7;
+            gap: 0.4rem;
+            flex-shrink: 0;
         }
 
-        .location-detail:last-child {
-            border-bottom: none;
+        /* ── THREE-DOT MENU ── */
+        .menu-wrap {
+            position: relative;
+            flex-shrink: 0;
         }
 
-        .location-detail label {
-            font-weight: 500;
-            opacity: 0.7;
-        }
-
-        #map {
-            flex: 1;
-            height: 100%;
-        }
-
-        .upload-zone {
-            border: 2px dashed #d2d2d7;
-            border-radius: 8px;
-            padding: 2rem;
-            text-align: center;
+        .three-dot-btn {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            border: 1px solid transparent;
+            background: transparent;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
             cursor: pointer;
-            transition: all 0.2s;
-            margin-bottom: 1.5rem;
+            font-size: 18px;
+            line-height: 1;
+            padding: 0;
+            transition: all 0.15s;
         }
 
-        .upload-zone:hover {
-            border-color: #0071e3;
-            background: #f5f5f7;
+        .three-dot-btn:hover, .menu-wrap.open .three-dot-btn {
+            background: var(--surface2);
+            border-color: var(--border);
+            color: var(--text);
         }
 
-        .upload-zone.dragover {
-            border-color: #0071e3;
-            background: #e8f4ff;
+        .device-card.active .three-dot-btn {
+            color: rgba(74,222,128,0.6);
         }
 
-        .status-indicator {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            margin-right: 0.5rem;
+        .device-card.active .three-dot-btn:hover,
+        .device-card.active .menu-wrap.open .three-dot-btn {
+            background: rgba(74,222,128,0.1);
+            border-color: rgba(74,222,128,0.25);
+            color: var(--accent);
         }
 
-        .status-online {
-            background: #34c759;
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: calc(100% + 4px);
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+            min-width: 130px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            z-index: 999;
         }
 
-        .status-offline {
-            background: #ff3b30;
+        .menu-wrap.open .dropdown-menu { display: block; }
+
+        .dropdown-item {
+            padding: 0.6rem 0.9rem;
+            font-size: 0.82rem;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: background 0.12s;
+            color: var(--text-dim);
+            border: none;
+            background: none;
+            width: 100%;
+            text-align: left;
         }
 
-        .refresh-info {
+        .dropdown-item:hover { background: var(--border); color: var(--text); }
+
+        .dropdown-item.danger { color: var(--danger); }
+        .dropdown-item.danger:hover { background: rgba(248,113,113,0.1); color: var(--danger); }
+
+        .dropdown-divider {
+            height: 1px;
+            background: var(--border);
+            margin: 2px 0;
+        }
+
+        /* ── DELETE MODAL ── */
+        .delete-modal-sheet {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px 16px 0 0;
+            padding: 1.5rem;
+            width: 100%;
+            max-width: 420px;
+            animation: sheet-up 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+        }
+
+        @media (min-width: 600px) {
+            .delete-modal-sheet { border-radius: 16px; }
+        }
+
+        .delete-device-name {
+            font-family: 'DM Mono', monospace;
             font-size: 0.85rem;
-            color: #86868b;
+            color: var(--text-dim);
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.4rem 0.7rem;
+            display: inline-block;
+            margin-bottom: 1rem;
+        }
+
+        .delete-warning {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+            margin-bottom: 1.25rem;
+        }
+
+        .btn-danger {
+            flex: 1;
+            padding: 0.7rem;
+            border-radius: 8px;
+            border: 1px solid rgba(248,113,113,0.3);
+            background: rgba(248,113,113,0.1);
+            color: var(--danger);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .btn-danger:hover { background: rgba(248,113,113,0.18); }
+
+        /* ── LOCATION DETAIL ── */
+        .location-card {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1rem;
             margin-top: 0.5rem;
         }
 
-        .loading {
-            text-align: center;
-            padding: 2rem;
-            color: #86868b;
+        .loc-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.85rem;
         }
 
-        .error-message {
-            background: #ff3b30;
-            color: white;
-            padding: 1rem;
-            border-radius: 8px;
-            margin-bottom: 1rem;
+        .loc-row:last-child { border-bottom: none; }
+
+        .loc-label {
+            color: var(--text-muted);
+            font-family: 'DM Mono', monospace;
+            font-size: 0.72rem;
         }
 
-        .success-message {
-            background: #34c759;
-            color: white;
-            padding: 1rem;
-            border-radius: 8px;
-            margin-bottom: 1rem;
-        }
+        .loc-value { font-weight: 500; }
 
-        input[type="file"] {
-            display: none;
-        }
-
-        .accuracy-badge {
-            display: inline-block;
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            font-weight: 600;
-        }
-
-        .accuracy-high {
-            background: #34c759;
-            color: white;
-        }
-
-        .accuracy-medium {
-            background: #ff9500;
-            color: white;
-        }
-
-        .accuracy-low {
-            background: #ff3b30;
-            color: white;
-        }
-
-        .rename-btn {
-            background: #f5f5f7;
-            border: 1px solid #d2d2d7;
-            color: #0071e3;
-            cursor: pointer;
-            font-size: 0.75rem;
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
-            margin-left: 0.5rem;
-            opacity: 0;
-            transition: all 0.2s;
+        .conf-badge {
+            padding: 0.2rem 0.5rem;
+            border-radius: 5px;
+            font-size: 0.72rem;
+            font-family: 'DM Mono', monospace;
             font-weight: 500;
         }
 
-        .device-item:hover .rename-btn {
-            opacity: 1;
+        .conf-high { background: rgba(74,222,128,0.15); color: var(--accent); }
+        .conf-med  { background: rgba(251,146,60,0.15);  color: var(--warn); }
+        .conf-low  { background: rgba(248,113,113,0.15); color: var(--danger); }
+
+        .maps-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            width: 100%;
+            margin-top: 0.75rem;
+            padding: 0.75rem;
+            background: var(--accent-dim);
+            border: 1px solid rgba(74,222,128,0.3);
+            border-radius: 10px;
+            color: var(--accent);
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.15s;
         }
 
-        .rename-btn:hover {
-            background: #e8e8ed;
-            border-color: #0071e3;
+        .maps-btn:hover { background: rgba(74,222,128,0.2); }
+
+        /* ── UPLOAD ── */
+        .upload-zone {
+            border: 2px dashed var(--border);
+            border-radius: 10px;
+            padding: 1.5rem 1rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin: 0.5rem 0 1rem;
+            background: var(--surface2);
         }
 
-        .modal {
+        .upload-zone:hover, .upload-zone.dragover {
+            border-color: var(--accent);
+            background: var(--accent-dim);
+        }
+
+        .upload-icon { font-size: 1.75rem; margin-bottom: 0.5rem; }
+
+        .upload-text {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+        }
+
+        .upload-text strong { color: var(--text); }
+
+        input[type="file"] { display: none; }
+
+        /* ── MESSAGES ── */
+        .message-area {
+            position: fixed;
+            top: calc(var(--header-height) + 0.75rem);
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 700;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            pointer-events: none;
+            width: min(380px, calc(100vw - 2rem));
+        }
+
+        .toast {
+            padding: 0.75rem 1rem;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            animation: toast-in 0.3s ease forwards;
+            pointer-events: all;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .toast-success {
+            background: rgba(74,222,128,0.15);
+            border: 1px solid rgba(74,222,128,0.3);
+            color: var(--accent);
+        }
+
+        .toast-error {
+            background: rgba(248,113,113,0.15);
+            border: 1px solid rgba(248,113,113,0.3);
+            color: var(--danger);
+        }
+
+        @keyframes toast-in {
+            from { opacity: 0; transform: translateY(-8px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ── MODAL ── */
+        .modal-overlay {
             display: none;
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            z-index: 1000;
-            align-items: center;
+            inset: 0;
+            background: rgba(0,0,0,0.75);
+            z-index: 800;
+            align-items: flex-end;
             justify-content: center;
         }
 
-        .modal.active {
-            display: flex;
+        .modal-overlay.active { display: flex; }
+
+        @media (min-width: 600px) {
+            .modal-overlay { align-items: center; }
         }
 
-        .modal-content {
-            background: white;
-            border-radius: 12px;
-            padding: 2rem;
-            max-width: 400px;
-            width: 90%;
+        .modal-sheet {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px 16px 0 0;
+            padding: 1.5rem;
+            width: 100%;
+            max-width: 420px;
+            animation: sheet-up 0.3s cubic-bezier(0.32, 0.72, 0, 1);
         }
 
-        .modal-content h3 {
+        @media (min-width: 600px) {
+            .modal-sheet { border-radius: 16px; }
+        }
+
+        @keyframes sheet-up {
+            from { transform: translateY(40px); opacity: 0; }
+            to   { transform: translateY(0);    opacity: 1; }
+        }
+
+        .modal-title {
+            font-weight: 600;
             margin-bottom: 1rem;
         }
 
-        .modal-content input {
+        .modal-input {
             width: 100%;
-            padding: 0.75rem;
-            border: 1px solid #d2d2d7;
+            padding: 0.75rem 1rem;
+            background: var(--surface2);
+            border: 1px solid var(--border);
             border-radius: 8px;
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
             font-size: 1rem;
             margin-bottom: 1rem;
+            outline: none;
+            transition: border-color 0.2s;
         }
+
+        .modal-input:focus { border-color: var(--accent); }
 
         .modal-actions {
             display: flex;
-            gap: 0.5rem;
-            justify-content: flex-end;
+            gap: 0.75rem;
+        }
+
+        .btn-ghost {
+            flex: 1;
+            padding: 0.7rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-dim);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .btn-accent {
+            flex: 1;
+            padding: 0.7rem;
+            border-radius: 8px;
+            border: 1px solid rgba(74,222,128,0.3);
+            background: var(--accent-dim);
+            color: var(--accent);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .btn-accent:hover { background: rgba(74,222,128,0.2); }
+
+        /* ── EMPTY / LOADING ── */
+        .empty-state {
+            text-align: center;
+            padding: 2rem 1rem;
+            color: var(--text-muted);
+        }
+
+        .empty-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+        .empty-text { font-size: 0.85rem; line-height: 1.5; }
+
+        /* ── MOBILE SELECTED DEVICE PEEK ── */
+        .map-device-peek {
+            position: fixed;
+            bottom: calc(var(--tab-bar-height) + 60px + 0.75rem);
+            left: 0.75rem;
+            right: 0.75rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 0.75rem 1rem;
+            z-index: 300;
+            display: none;
+            align-items: center;
+            gap: 0.75rem;
+            animation: peek-in 0.25s ease;
+        }
+
+        @media (min-width: 768px) { .map-device-peek { display: none !important; } }
+
+        .map-device-peek.visible { display: flex; }
+
+        @keyframes peek-in {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .peek-close {
+            width: 28px; height: 28px;
+            border-radius: 50%;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            font-size: 0.8rem;
+            flex-shrink: 0;
+        }
+
+        /* Leaflet popup dark theme */
+        .leaflet-popup-content-wrapper {
+            background: var(--surface) !important;
+            border: 1px solid var(--border) !important;
+            border-radius: 10px !important;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.4) !important;
+            color: var(--text) !important;
+        }
+
+        .leaflet-popup-tip { background: var(--surface) !important; }
+
+        .leaflet-popup-content {
+            font-family: 'DM Sans', sans-serif !important;
+            font-size: 0.85rem !important;
+            line-height: 1.5 !important;
+        }
+
+        .popup-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .popup-time {
+            color: var(--text-muted);
+            font-family: 'DM Mono', monospace;
+            font-size: 0.72rem;
+        }
+
+        .popup-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            margin-top: 0.5rem;
+            color: var(--accent);
+            text-decoration: none;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        /* Sidebar padding */
+        .sidebar-inner {
+            padding: 0 1rem 2rem;
         }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>🔍 Find My Flipper</h1>
-        <div class="header-actions">
-            <span class="refresh-info" id="lastUpdate">Never updated</span>
-            <button class="btn btn-secondary" onclick="refreshLocations()">🔄 Refresh</button>
-            <button class="btn btn-secondary" onclick="logout()">Logout</button>
+
+    <!-- ── HEADER ── -->
+    <header class="app-header">
+        <div class="app-title">
+            <div class="title-dot"></div>
+            Find My Flipper
+        </div>
+        <div class="header-right">
+            <span class="last-update" id="lastUpdate">—</span>
+            <button class="icon-btn" onclick="refreshLocations()" title="Refresh">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M13.5 8a5.5 5.5 0 1 1-1.1-3.3"/>
+                    <polyline points="13.5 2 13.5 5.5 10 5.5"/>
+                </svg>
+            </button>
+            <button class="icon-btn" onclick="logout()" title="Logout">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M6 2H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>
+                    <polyline points="11 11 14 8 11 5"/>
+                    <line x1="14" y1="8" x2="6" y2="8"/>
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- ── MAP ── -->
+    <div id="map"></div>
+
+    <!-- ── MAP DEVICE PEEK (mobile, when device selected from map) ── -->
+    <div class="map-device-peek" id="mapDevicePeek">
+        <div class="device-dot online" style="flex-shrink:0"></div>
+        <div class="device-info" style="flex:1;min-width:0">
+            <div class="device-name" id="peekName">—</div>
+            <div class="device-time" id="peekTime">—</div>
+        </div>
+        <a class="maps-btn" id="peekMapsLink" target="_blank" style="width:auto;margin:0;padding:0.4rem 0.75rem;font-size:0.75rem">Maps ↗</a>
+        <div class="peek-close" onclick="hidePeek()">✕</div>
+    </div>
+
+    <!-- ── DESKTOP SIDEBAR ── -->
+    <div class="desktop-sidebar" id="desktopSidebar">
+        <div class="sidebar-inner" id="desktopSidebarContent">
+            <!-- populated by renderSidebarContent() -->
         </div>
     </div>
 
-    <div class="container">
-        <div class="sidebar">
-            <h2>Upload key file</h2>
-            <div class="upload-zone" id="uploadZone" onclick="document.getElementById('keyFileInput').click()">
-                <p>📁 Click or drag .keys file here</p>
-                <input type="file" id="keyFileInput" accept=".keys" onchange="uploadKeyFile(event)">
-            </div>
-
-            <div id="messageArea"></div>
-
-            <h2>Devices</h2>
-            <div class="device-list" id="deviceList">
-                <div class="loading">Loading devices...</div>
-            </div>
-
-            <div id="locationInfo"></div>
+    <!-- ── BOTTOM PANEL (mobile) ── -->
+    <div class="bottom-panel peek" id="bottomPanel">
+        <div class="panel-handle-zone" id="panelHandleZone">
+            <div class="panel-handle"></div>
+            <div class="panel-peek-label" id="peekLabel">Devices</div>
         </div>
-
-        <div id="map"></div>
+        <div class="panel-content" id="panelContent">
+            <!-- populated by renderSidebarContent() -->
+        </div>
     </div>
 
-    <!-- Rename Modal -->
-    <div id="renameModal" class="modal">
-        <div class="modal-content">
-            <h3>Rename device</h3>
-            <input type="text" id="newDeviceName" placeholder="Enter new name">
+    <!-- ── TAB BAR (mobile) ── -->
+    <nav class="tab-bar">
+        <div class="tab-item active" id="tab-map" onclick="switchTab('map')">
+            <div class="tab-icon">🗺</div>
+            <span>Map</span>
+        </div>
+        <div class="tab-item" id="tab-devices" onclick="switchTab('devices')">
+            <div class="tab-icon">📡</div>
+            <span>Devices</span>
+        </div>
+        <div class="tab-item" id="tab-upload" onclick="switchTab('upload')">
+            <div class="tab-icon">⬆︎</div>
+            <span>Upload</span>
+        </div>
+    </nav>
+
+    <!-- ── DELETE MODAL ── -->
+    <div class="modal-overlay" id="deleteModal">
+        <div class="delete-modal-sheet">
+            <div class="modal-title">Delete device?</div>
+            <div class="delete-device-name" id="deleteDeviceLabel">—</div>
+            <p class="delete-warning">This will remove the device and all its stored location data. This action cannot be undone.</p>
             <div class="modal-actions">
-                <button class="btn btn-secondary" onclick="closeRenameModal()">Cancel</button>
-                <button class="btn btn-primary" onclick="saveDeviceName()">Save</button>
+                <button class="btn-ghost" onclick="closeDeleteModal()">Cancel</button>
+                <button class="btn-danger" onclick="confirmDelete()">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── TOAST AREA ── -->
+    <div class="message-area" id="messageArea"></div>
+
+    <!-- ── RENAME MODAL ── -->
+    <div class="modal-overlay" id="renameModal">
+        <div class="modal-sheet">
+            <div class="modal-title">Rename device</div>
+            <input type="text" class="modal-input" id="newDeviceName" placeholder="Enter new name">
+            <div class="modal-actions">
+                <button class="btn-ghost" onclick="closeRenameModal()">Cancel</button>
+                <button class="btn-accent" onclick="saveDeviceName()">Save</button>
             </div>
         </div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        let map;
-        let markers = {};
-        let locations = [];
-        let selectedDevice = null;
-        let deviceBeingRenamed = null;
+    /* ══════════════════════════════════════════
+       STATE
+    ══════════════════════════════════════════ */
+    let map;
+    let markers = {};
+    let locations = [];
+    let selectedDevice = null;
+    let deviceBeingRenamed = null;
+    let currentTab = 'map';
+    let panelState = 'peek'; // 'peek' | 'half'
 
-        // Rename device functions
-        function openRenameModal(deviceName, originalName) {
-            deviceBeingRenamed = originalName;
-            document.getElementById('newDeviceName').value = deviceName;
-            document.getElementById('renameModal').classList.add('active');
-            document.getElementById('newDeviceName').focus();
+    /* ══════════════════════════════════════════
+       MAP INIT
+    ══════════════════════════════════════════ */
+    function initMap() {
+        map = L.map('map', { zoomControl: false }).setView([37.7749, -122.4194], 13);
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/">CARTO</a>',
+            subdomains: 'abcd',
+            maxZoom: 20
+        }).addTo(map);
+
+        // Zoom control top-right
+        L.control.zoom({ position: 'topright' }).addTo(map);
+
+        // Fix map when sidebar shifts it (desktop)
+        setTimeout(() => map.invalidateSize(), 100);
+    }
+
+    /* ══════════════════════════════════════════
+       TAB SWITCHING (mobile)
+    ══════════════════════════════════════════ */
+    function switchTab(tab) {
+        currentTab = tab;
+
+        document.querySelectorAll('.tab-item').forEach(el => el.classList.remove('active'));
+        document.getElementById('tab-' + tab).classList.add('active');
+
+        if (tab === 'map') {
+            setPanel('peek');
+            hidePeek();
+            setTimeout(() => map.invalidateSize(), 50);
+        } else {
+            setPanel('half');
         }
 
-        function closeRenameModal() {
-            document.getElementById('renameModal').classList.remove('active');
-            deviceBeingRenamed = null;
+        // Always re-render panel content so it matches the active tab
+        renderSidebarContent();
+    }
+
+    /* ══════════════════════════════════════════
+       BOTTOM PANEL DRAG
+    ══════════════════════════════════════════ */
+    function setPanel(state) {
+        panelState = state;
+        const panel = document.getElementById('bottomPanel');
+        panel.classList.remove('peek', 'half');
+        panel.classList.add(state);
+        updatePeekLabel();
+    }
+
+    function updatePeekLabel() {
+        const label = document.getElementById('peekLabel');
+        if (panelState === 'peek') {
+            const deviceCount = new Set(locations.map(l => l.key)).size;
+            label.textContent = currentTab === 'upload' ? 'Upload' : `${deviceCount} device${deviceCount !== 1 ? 's' : ''}`;
+        } else {
+            label.textContent = currentTab === 'upload' ? 'Upload key file' : 'Devices';
+        }
+    }
+
+    // Simple tap toggle for the handle
+    document.getElementById('panelHandleZone').addEventListener('click', () => {
+        if (panelState === 'peek') {
+            setPanel('half');
+        } else {
+            setPanel('peek');
+            // Return to map tab visually
+            document.querySelectorAll('.tab-item').forEach(el => el.classList.remove('active'));
+            document.getElementById('tab-map').classList.add('active');
+            currentTab = 'map';
+        }
+    });
+
+    /* ══════════════════════════════════════════
+       RENDER SIDEBAR / PANEL CONTENT
+    ══════════════════════════════════════════ */
+    function renderSidebarContent() {
+        const devicesHtml = buildDevicesHtml();
+        const uploadHtml = buildUploadHtml();
+
+        // Desktop: show both sections
+        document.getElementById('desktopSidebarContent').innerHTML = `
+            ${uploadHtml}
+            ${devicesHtml}
+        `;
+        bindUploadEvents('desktop');
+
+        // Mobile panel: show based on tab
+        const panelContent = document.getElementById('panelContent');
+        if (currentTab === 'upload') {
+            panelContent.innerHTML = uploadHtml;
+            bindUploadEvents('mobile');
+        } else {
+            panelContent.innerHTML = devicesHtml;
         }
 
-        async function saveDeviceName() {
-            const newName = document.getElementById('newDeviceName').value.trim();
-            
-            if (!newName) {
-                showMessage('Please enter a device name', 'error');
+        updatePeekLabel();
+    }
+
+    function buildUploadHtml() {
+        return `
+            <div class="section-header">Key File</div>
+            <div class="upload-zone" id="uploadZone" onclick="document.getElementById('keyFileInput').click()">
+                <div class="upload-icon">🔑</div>
+                <div class="upload-text"><strong>Upload .keys file</strong><br>Click or drag here</div>
+                <input type="file" id="keyFileInput" accept=".keys" onchange="uploadKeyFile(event)">
+            </div>
+        `;
+    }
+
+    function buildDevicesHtml() {
+        if (locations.length === 0) {
+            return `
+                <div class="section-header">Devices</div>
+                <div class="empty-state">
+                    <div class="empty-icon">📡</div>
+                    <div class="empty-text">No location data found.<br>Upload a .keys file to get started.</div>
+                </div>
+            `;
+        }
+
+        // Group by device
+        const deviceLocations = {};
+        locations.forEach(loc => {
+            if (!deviceLocations[loc.key]) deviceLocations[loc.key] = [];
+            deviceLocations[loc.key].push(loc);
+        });
+
+        let html = `<div class="section-header">Devices (${Object.keys(deviceLocations).length})</div>`;
+
+        Object.entries(deviceLocations).forEach(([name, locs]) => {
+            const latest = locs[0];
+            const timeAgo = getTimeAgo(new Date(latest.timestamp * 1000));
+            const isSelected = selectedDevice === name;
+            // original_key is the .keys filename stem — needed for delete/rename API calls
+            const originalName = latest.original_key || name;
+
+        html += `
+                <div class="device-card ${isSelected ? 'active' : ''}" data-device="${name}" onclick="selectDevice('${name}')">
+                    <div class="device-dot online"></div>
+                    <div class="device-info">
+                        <div class="device-name">${name}</div>
+                        <div class="device-time">${timeAgo} · ${locs.length} report${locs.length !== 1 ? 's' : ''} last 24h</div>
+                    </div>
+                    <div class="menu-wrap" onclick="event.stopPropagation()" data-menu="${name}">
+                        <button class="three-dot-btn" onclick="toggleMenu(this.parentElement)" title="Options">···</button>
+                        <div class="dropdown-menu">
+                            <button class="dropdown-item" onclick="openRenameModal('${name}', '${originalName}'); closeAllMenus()">
+                                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 2a1.414 1.414 0 0 1 2 2L5 12l-3 1 1-3Z"/></svg>
+                                Rename
+                            </button>
+                            <div class="dropdown-divider"></div>
+                            <button class="dropdown-item danger" onclick="openDeleteModal('${name}', '${originalName}'); closeAllMenus()">
+                                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 4 3 4 14 4"/><path d="M5 4V2h6v2"/><path d="M6 7v5M10 7v5"/><path d="M3 4l1 9a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-9"/></svg>
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        if (selectedDevice) {
+            const locs = deviceLocations[selectedDevice];
+            if (locs) {
+                const latest = locs[0];
+                const date = new Date(latest.timestamp * 1000);
+                let confClass = 'conf-low', confLabel = 'Low';
+                if (latest.conf > 100) { confClass = 'conf-high'; confLabel = 'High'; }
+                else if (latest.conf > 50) { confClass = 'conf-med'; confLabel = 'Med'; }
+
+                html += `
+                    <div class="section-header" style="margin-top:0.5rem">Selected: ${selectedDevice}</div>
+                    <div class="location-card">
+                        <div class="loc-row">
+                            <span class="loc-label">LAST SEEN</span>
+                            <span class="loc-value">${format12Hour(date)}</span>
+                        </div>
+                        <div class="loc-row">
+                            <span class="loc-label">CONFIDENCE</span>
+                            <span class="conf-badge ${confClass}">${confLabel} (${latest.conf})</span>
+                        </div>
+                        <div class="loc-row">
+                            <span class="loc-label">REPORTS (24H)</span>
+                            <span class="loc-value">${locs.length}</span>
+                        </div>
+                        <a class="maps-btn" href="${latest.google_maps}" target="_blank">Open in Google Maps ↗</a>
+                    </div>
+                `;
+            }
+        }
+
+        return html;
+    }
+
+    function bindUploadEvents(scope) {
+        // Re-bind drag events
+        const zone = document.getElementById('uploadZone');
+        if (!zone) return;
+        zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+        zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+        zone.addEventListener('drop', e => {
+            e.preventDefault();
+            zone.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                const fi = document.getElementById('keyFileInput');
+                fi.files = files;
+                uploadKeyFile({ target: fi });
+            }
+        });
+    }
+
+    /* ══════════════════════════════════════════
+       MAP UPDATE
+    ══════════════════════════════════════════ */
+    function updateMap() {
+        Object.values(markers).forEach(m => m.remove());
+        markers = {};
+
+        if (!locations.length) return;
+
+        const deviceLocations = {};
+        locations.forEach(loc => {
+            if (!deviceLocations[loc.key]) deviceLocations[loc.key] = [];
+            deviceLocations[loc.key].push(loc);
+        });
+
+        Object.entries(deviceLocations).forEach(([name, locs]) => {
+            const loc = locs[0];
+            const isSelected = selectedDevice === name;
+
+            const icon = L.divIcon({
+                html: `<div style="
+                    width: ${isSelected ? 20 : 16}px;
+                    height: ${isSelected ? 20 : 16}px;
+                    background: ${isSelected ? '#60a5fa' : '#4ade80'};
+                    border: 3px solid ${isSelected ? '#93c5fd' : '#86efac'};
+                    border-radius: 50%;
+                    box-shadow: 0 0 ${isSelected ? 16 : 10}px ${isSelected ? 'rgba(96,165,250,0.6)' : 'rgba(74,222,128,0.5)'};
+                "></div>`,
+                className: '',
+                iconSize: [isSelected ? 20 : 16, isSelected ? 20 : 16],
+                iconAnchor: [isSelected ? 10 : 8, isSelected ? 10 : 8]
+            });
+
+            const date = new Date(loc.timestamp * 1000);
+            const marker = L.marker([loc.lat, loc.lon], { icon })
+                .addTo(map)
+                .bindPopup(`
+                    <div class="popup-name">${name}</div>
+                    <div class="popup-time">${format12Hour(date)}</div>
+                    <div class="popup-time">Confidence: ${loc.conf}</div>
+                    <a class="popup-link" href="${loc.google_maps}" target="_blank">Open in Google Maps ↗</a>
+                `);
+
+            marker.on('click', () => {
+                selectDevice(name);
+                // On mobile, show the peek card
+                if (window.innerWidth < 768) {
+                    showPeek(name, loc);
+                }
+            });
+
+            markers[name] = marker;
+        });
+
+        if (Object.keys(markers).length > 0 && !selectedDevice) {
+            const bounds = L.featureGroup(Object.values(markers)).getBounds();
+            map.fitBounds(bounds, { padding: [50, 50] });
+        }
+    }
+
+    /* ══════════════════════════════════════════
+       MAP PEEK CARD (mobile)
+    ══════════════════════════════════════════ */
+    function showPeek(name, loc) {
+        const date = new Date(loc.timestamp * 1000);
+        document.getElementById('peekName').textContent = name;
+        document.getElementById('peekTime').textContent = getTimeAgo(date);
+        document.getElementById('peekMapsLink').href = loc.google_maps;
+        document.getElementById('mapDevicePeek').classList.add('visible');
+    }
+
+    function hidePeek() {
+        document.getElementById('mapDevicePeek').classList.remove('visible');
+    }
+
+    /* ══════════════════════════════════════════
+       DEVICE SELECTION
+    ══════════════════════════════════════════ */
+    function selectDevice(name) {
+        selectedDevice = name;
+        renderSidebarContent();
+        updateMap();
+
+        const deviceLocations = locations.filter(l => l.key === name);
+        if (deviceLocations.length > 0 && markers[name]) {
+            map.setView([deviceLocations[0].lat, deviceLocations[0].lon], 15);
+            markers[name].openPopup();
+        }
+
+        // On mobile: switch to map and show peek
+        if (window.innerWidth < 768) {
+            currentTab = 'map';
+            document.querySelectorAll('.tab-item').forEach(el => el.classList.remove('active'));
+            document.getElementById('tab-map').classList.add('active');
+            setPanel('peek');
+            const loc = deviceLocations[0];
+            if (loc) showPeek(name, loc);
+            setTimeout(() => map.invalidateSize(), 50);
+        }
+    }
+
+    /* ══════════════════════════════════════════
+       API CALLS
+    ══════════════════════════════════════════ */
+    async function uploadKeyFile(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const fd = new FormData();
+        fd.append('file', file);
+        try {
+            const res = await fetch('/api/upload_key', { method: 'POST', body: fd });
+            const data = await res.json();
+            showToast(data.message, data.success ? 'success' : 'error');
+            if (data.success) {
+                setTimeout(() => showToast('Fetching location data…', 'success'), 400);
+                refreshLocations();
+            }
+        } catch (e) {
+            showToast('Failed to upload: ' + e.message, 'error');
+        }
+        event.target.value = '';
+    }
+
+    async function loadDevices() {
+        try {
+            const res = await fetch('/api/devices');
+            const data = await res.json();
+            renderSidebarContent();
+        } catch (e) {
+            console.error('Failed to load devices:', e);
+        }
+    }
+
+    async function refreshLocations() {
+        try {
+            const authRes = await fetch('/api/check_auth');
+            const authData = await authRes.json();
+            if (!authData.authenticated) {
+                showToast('Session expired. Redirecting…', 'error');
+                setTimeout(() => window.location.href = '/login', 2000);
                 return;
             }
 
-            try {
-                const response = await fetch('/api/rename_device', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        device_id: deviceBeingRenamed,
-                        new_name: newName
-                    })
-                });
+            const res = await fetch('/api/locations?hours=24');
+            const data = await res.json();
 
-                const data = await response.json();
-                
-                if (data.success) {
-                    showMessage('Device renamed successfully', 'success');
-                    closeRenameModal();
-                    loadDevices();
-                    refreshLocations();
-                } else {
-                    showMessage(data.message, 'error');
-                }
-            } catch (error) {
-                showMessage('Failed to rename device: ' + error.message, 'error');
+            if (data.status === 401) {
+                showToast('Session expired. Redirecting…', 'error');
+                setTimeout(() => window.location.href = '/login', 2000);
+                return;
             }
-        }
 
-        // Close modal on escape key
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
+            if (data.error) { showToast(data.error, 'error'); return; }
+
+            locations = data.locations || [];
+            updateMap();
+            renderSidebarContent();
+
+            const now = new Date();
+            document.getElementById('lastUpdate').textContent = 'Last refresh: ' + now.toLocaleTimeString('en-US', {
+                hour: 'numeric', minute: '2-digit', hour12: true
+            });
+
+            if (!locations.length) showToast('No location reports in the last 24h.', 'error');
+        } catch (e) {
+            showToast('Failed to refresh: ' + e.message, 'error');
+        }
+    }
+
+    /* ══════════════════════════════════════════
+       THREE-DOT MENU
+    ══════════════════════════════════════════ */
+    function toggleMenu(menuWrap) {
+        const isOpen = menuWrap.classList.contains('open');
+        closeAllMenus();
+        if (!isOpen) menuWrap.classList.add('open');
+    }
+
+    function closeAllMenus() {
+        document.querySelectorAll('.menu-wrap.open').forEach(m => m.classList.remove('open'));
+    }
+
+    // Close menus on outside click
+    document.addEventListener('click', () => closeAllMenus());
+
+    /* ══════════════════════════════════════════
+       RENAME MODAL
+       NOTE: Does NOT call renderSidebarContent — that was causing the lag.
+       The modal is pure overlay; DOM stays untouched until after the API call.
+    ══════════════════════════════════════════ */
+    function openRenameModal(displayName, originalName) {
+        deviceBeingRenamed = originalName;
+        const input = document.getElementById('newDeviceName');
+        input.value = displayName;
+        document.getElementById('renameModal').classList.add('active');
+        // Double rAF: first frame paints the modal, second frame focuses
+        // and explicitly moves the cursor to the end of the existing text
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                input.focus();
+                const len = input.value.length;
+                input.setSelectionRange(len, len);
+            });
+        });
+    }
+
+    function closeRenameModal() {
+        document.getElementById('renameModal').classList.remove('active');
+        deviceBeingRenamed = null;
+    }
+
+    async function saveDeviceName() {
+        const newName = document.getElementById('newDeviceName').value.trim();
+        if (!newName) { showToast('Please enter a name', 'error'); return; }
+        try {
+            const res = await fetch('/api/rename_device', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ device_id: deviceBeingRenamed, new_name: newName })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast('Device renamed', 'success');
                 closeRenameModal();
+                refreshLocations();
+            } else {
+                showToast(data.message, 'error');
             }
-        });
-
-        // Close modal on background click
-        document.getElementById('renameModal').addEventListener('click', (e) => {
-            if (e.target === document.getElementById('renameModal')) {
-                closeRenameModal();
-            }
-        });
-
-        // Initialize map
-        function initMap() {
-            map = L.map('map').setView([37.7749, -122.4194], 13);
-            
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors'
-            }).addTo(map);
+        } catch (e) {
+            showToast('Rename failed: ' + e.message, 'error');
         }
+    }
 
-        // Show message
-        function showMessage(message, type = 'success') {
-            const messageArea = document.getElementById('messageArea');
-            const div = document.createElement('div');
-            div.className = type === 'success' ? 'success-message' : 'error-message';
-            div.textContent = message;
-            messageArea.appendChild(div);
-            
-            setTimeout(() => {
-                div.remove();
-            }, 5000);
-        }
+    document.getElementById('renameModal').addEventListener('click', e => {
+        if (e.target === document.getElementById('renameModal')) closeRenameModal();
+    });
 
-        // Upload key file
-        async function uploadKeyFile(event) {
-            const file = event.target.files[0];
-            if (!file) return;
+    /* ══════════════════════════════════════════
+       DELETE MODAL
+    ══════════════════════════════════════════ */
+    let deviceBeingDeleted = null;      // display name (for UI + selectedDevice check)
+    let deviceBeingDeletedKey = null;   // original filename stem (for API)
 
-            const formData = new FormData();
-            formData.append('file', file);
+    function openDeleteModal(displayName, originalName) {
+        deviceBeingDeleted = displayName;
+        deviceBeingDeletedKey = originalName;
+        document.getElementById('deleteDeviceLabel').textContent = displayName;
+        document.getElementById('deleteModal').classList.add('active');
+    }
 
-            try {
-                const response = await fetch('/api/upload_key', {
-                    method: 'POST',
-                    body: formData
-                });
+    function closeDeleteModal() {
+        document.getElementById('deleteModal').classList.remove('active');
+        deviceBeingDeleted = null;
+        deviceBeingDeletedKey = null;
+    }
 
-                const data = await response.json();
-                
-                if (data.success) {
-                    showMessage(data.message, 'success');
-                    loadDevices();
-                } else {
-                    showMessage(data.message, 'error');
-                }
-            } catch (error) {
-                showMessage('Failed to upload file: ' + error.message, 'error');
-            }
-
-            // Reset file input
-            event.target.value = '';
-        }
-
-        // Drag and drop support
-        const uploadZone = document.getElementById('uploadZone');
-        
-        uploadZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadZone.classList.add('dragover');
-        });
-
-        uploadZone.addEventListener('dragleave', () => {
-            uploadZone.classList.remove('dragover');
-        });
-
-        uploadZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadZone.classList.remove('dragover');
-            
-            const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                const fileInput = document.getElementById('keyFileInput');
-                fileInput.files = files;
-                uploadKeyFile({ target: fileInput });
-            }
-        });
-
-        // Load devices
-        async function loadDevices() {
-            try {
-                const response = await fetch('/api/devices');
-                const data = await response.json();
-                
-                const deviceList = document.getElementById('deviceList');
-                
-                if (data.devices.length === 0) {
-                    deviceList.innerHTML = '<div class="loading">No devices found. Upload a .keys file to get started.</div>';
-                } else {
-                    deviceList.innerHTML = '';
-                    data.devices.forEach(device => {
-                        const div = document.createElement('div');
-                        div.className = 'device-item';
-                        div.setAttribute('data-device-name', device.name);
-                        div.setAttribute('data-original-name', device.original_name);
-                        div.innerHTML = `
-                            <div class="device-name">
-                                <span class="device-name-text">${device.name}</span>
-                                <button class="rename-btn" onclick="event.stopPropagation(); openRenameModal('${device.name}', '${device.original_name}')">✏️ Rename</button>
-                            </div>
-                        `;
-                        div.onclick = () => selectDevice(device.name);
-                        deviceList.appendChild(div);
-                    });
-                }
-            } catch (error) {
-                console.error('Failed to load devices:', error);
-            }
-        }
-
-        // Refresh locations
-        async function refreshLocations() {
-            try {
-                // Check auth first
-                const authResponse = await fetch('/api/check_auth');
-                const authData = await authResponse.json();
-                
-                if (!authData.authenticated) {
-                    showMessage('Authentication expired. Please log in again.', 'error');
-                    setTimeout(() => {
-                        window.location.href = '/login';
-                    }, 2000);
-                    return;
-                }
-
-                const response = await fetch('/api/locations?hours=24');
-                const data = await response.json();
-                
-                if (data.status === 401) {
-                    showMessage('Authentication expired. Please log in again.', 'error');
-                    setTimeout(() => {
-                        window.location.href = '/login';
-                    }, 2000);
-                    return;
-                }
-
-                if (data.error) {
-                    showMessage(data.error, 'error');
-                    return;
-                }
-
-                locations = data.locations || [];
+    async function confirmDelete() {
+        if (!deviceBeingDeletedKey) return;
+        try {
+            const res = await fetch('/api/delete_device', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ device_id: deviceBeingDeletedKey })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast('Device deleted', 'success');
+                // Optimistically remove from local state so UI updates instantly
+                // without waiting for a round-trip to Apple's API
+                if (selectedDevice === deviceBeingDeleted) selectedDevice = null;
+                locations = locations.filter(l => l.original_key !== deviceBeingDeletedKey);
+                closeDeleteModal();
                 updateMap();
-                updateDeviceList();
-                
-                const lastUpdate = document.getElementById('lastUpdate');
-                lastUpdate.textContent = 'Last updated: ' + new Date().toLocaleTimeString('en-US', { 
-                    hour: 'numeric', 
-                    minute: '2-digit', 
-                    hour12: true 
-                });
-                
-                if (locations.length === 0) {
-                    showMessage('No location reports found in the last 24 hours.', 'error');
-                }
-            } catch (error) {
-                showMessage('Failed to refresh locations: ' + error.message, 'error');
+                renderSidebarContent();
+                // Then do a silent background refresh to fully sync state
+                refreshLocations();
+            } else {
+                showToast(data.message || 'Delete failed', 'error');
             }
+        } catch (e) {
+            showToast('Delete failed: ' + e.message, 'error');
         }
+    }
 
-        // Update map with markers
-        function updateMap() {
-            // Clear existing markers
-            Object.values(markers).forEach(marker => marker.remove());
-            markers = {};
+    document.getElementById('deleteModal').addEventListener('click', e => {
+        if (e.target === document.getElementById('deleteModal')) closeDeleteModal();
+    });
 
-            if (locations.length === 0) return;
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') { closeRenameModal(); closeDeleteModal(); closeAllMenus(); }
+        if (e.key === 'Enter' && document.getElementById('renameModal').classList.contains('active')) saveDeviceName();
+    });
 
-            // Group locations by device
-            const deviceLocations = {};
-            locations.forEach(loc => {
-                if (!deviceLocations[loc.key]) {
-                    deviceLocations[loc.key] = [];
-                }
-                deviceLocations[loc.key].push(loc);
-            });
+    /* ══════════════════════════════════════════
+       TOAST
+    ══════════════════════════════════════════ */
+    function showToast(msg, type = 'success') {
+        const area = document.getElementById('messageArea');
+        const el = document.createElement('div');
+        el.className = `toast toast-${type}`;
+        el.textContent = (type === 'success' ? '✓ ' : '✕ ') + msg;
+        area.appendChild(el);
+        setTimeout(() => el.remove(), 4000);
+    }
 
-            // Add markers for each device (most recent location)
-            Object.entries(deviceLocations).forEach(([deviceName, locs]) => {
-                const mostRecent = locs[0]; // Already sorted by timestamp desc
-                
-                const marker = L.marker([mostRecent.lat, mostRecent.lon])
-                    .addTo(map)
-                    .bindPopup(`
-                        <b>${deviceName}</b><br>
-                        ${format12Hour(new Date(mostRecent.timestamp * 1000))}<br>
-                        Confidence: ${mostRecent.conf}<br>
-                        <a href="${mostRecent.google_maps}" target="_blank">Open in Google Maps</a>
-                    `);
-                
-                markers[deviceName] = marker;
-            });
+    /* ══════════════════════════════════════════
+       HELPERS
+    ══════════════════════════════════════════ */
+    function getTimeAgo(date) {
+        const s = Math.floor((Date.now() - date) / 1000);
+        if (s < 60)    return 'Just now';
+        if (s < 3600)  return Math.floor(s / 60) + 'm ago';
+        if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+        return Math.floor(s / 86400) + 'd ago';
+    }
 
-            // Fit map to show all markers
-            if (Object.keys(markers).length > 0) {
-                const bounds = L.featureGroup(Object.values(markers)).getBounds();
-                map.fitBounds(bounds, { padding: [50, 50] });
-            }
-        }
+    function format12Hour(date) {
+        return date.toLocaleString('en-US', {
+            month: 'numeric', day: 'numeric', year: 'numeric',
+            hour: 'numeric', minute: '2-digit', hour12: true
+        });
+    }
 
-        // Update device list with location info
-        function updateDeviceList() {
-            const deviceList = document.getElementById('deviceList');
-            const deviceItems = deviceList.getElementsByClassName('device-item');
-            
-            // Create a map of latest locations per device
-            const latestLocations = {};
-            locations.forEach(loc => {
-                if (!latestLocations[loc.key] || loc.timestamp > latestLocations[loc.key].timestamp) {
-                    latestLocations[loc.key] = loc;
-                }
-            });
+    function logout() { window.location.href = '/logout'; }
 
-            // Update each device item
-            Array.from(deviceItems).forEach(item => {
-                const deviceName = item.getAttribute('data-device-name');
-                const originalName = item.getAttribute('data-original-name');
-                const location = latestLocations[deviceName];
-                
-                let timeHtml = '';
-                if (location) {
-                    const date = new Date(location.timestamp * 1000);
-                    const timeAgo = getTimeAgo(date);
-                    timeHtml = `<div class="device-time"><span class="status-indicator status-online"></span>${timeAgo}</div>`;
-                } else {
-                    timeHtml = `<div class="device-time"><span class="status-indicator status-offline"></span>No location data</div>`;
-                }
-                
-                item.innerHTML = `
-                    <div class="device-name">
-                        <span class="device-name-text">${deviceName}</span>
-                        <button class="rename-btn" onclick="event.stopPropagation(); openRenameModal('${deviceName}', '${originalName}')">✏️ Rename</button>
-                    </div>
-                    ${timeHtml}
-                `;
-            });
-        }
+    /* ══════════════════════════════════════════
+       RESIZE: re-measure map when sidebar shows/hides
+    ══════════════════════════════════════════ */
+    window.addEventListener('resize', () => {
+        setTimeout(() => map && map.invalidateSize(), 100);
+    });
 
-        // Select a device
-        function selectDevice(deviceName) {
-            selectedDevice = deviceName;
-            
-            // Update active state
-            const items = document.querySelectorAll('.device-item');
-            items.forEach(item => {
-                if (item.getAttribute('data-device-name') === deviceName) {
-                    item.classList.add('active');
-                } else {
-                    item.classList.remove('active');
-                }
-            });
-
-            // Show location info
-            const deviceLocations = locations.filter(loc => loc.key === deviceName);
-            
-            if (deviceLocations.length > 0) {
-                const latest = deviceLocations[0];
-                const date = new Date(latest.timestamp * 1000);
-                
-                let accuracy = 'Low';
-                let accuracyClass = 'accuracy-low';
-                if (latest.conf > 200) {
-                    accuracy = 'High';
-                    accuracyClass = 'accuracy-high';
-                } else if (latest.conf > 100) {
-                    accuracy = 'Medium';
-                    accuracyClass = 'accuracy-medium';
-                }
-
-                document.getElementById('locationInfo').innerHTML = `
-                    <div class="location-info">
-                        <h3>${deviceName}</h3>
-                        <div class="location-detail">
-                            <label>Last Seen:</label>
-                            <span>${format12Hour(date)}</span>
-                        </div>
-                        <div class="location-detail">
-                            <label>Accuracy:</label>
-                            <span class="accuracy-badge ${accuracyClass}">${accuracy} (${latest.conf})</span>
-                        </div>
-                        <div class="location-detail">
-                            <label>Reports:</label>
-                            <span>${deviceLocations.length} in last 24h</span>
-                        </div>
-                        <div style="margin-top: 1rem;">
-                            <a href="${latest.google_maps}" target="_blank" class="btn btn-primary" style="width: 100%; text-align: center; text-decoration: none; display: block;">
-                                Open in Google Maps
-                            </a>
-                        </div>
-                    </div>
-                `;
-
-                // Center map on this device
-                if (markers[deviceName]) {
-                    map.setView([latest.lat, latest.lon], 15);
-                    markers[deviceName].openPopup();
-                }
-            }
-        }
-
-        // Get time ago string
-        function getTimeAgo(date) {
-            const seconds = Math.floor((new Date() - date) / 1000);
-            
-            if (seconds < 60) return 'Just now';
-            if (seconds < 3600) return Math.floor(seconds / 60) + ' minute(s) ago';
-            if (seconds < 86400) return Math.floor(seconds / 3600) + ' hours ago';
-            return Math.floor(seconds / 86400) + ' days ago';
-        }
-
-        // Format date in 12-hour time
-        function format12Hour(date) {
-            return date.toLocaleString('en-US', {
-                month: 'numeric',
-                day: 'numeric',
-                year: 'numeric',
-                hour: 'numeric',
-                minute: '2-digit',
-                hour12: true
-            });
-        }
-
-        // Logout
-        function logout() {
-            window.location.href = '/logout';
-        }
-
-        // Initialize on page load
-        window.onload = function() {
-            initMap();
-            loadDevices();
-            refreshLocations();
-            
-            // Auto-refresh every 5 minutes
-            setInterval(refreshLocations, 5 * 60 * 1000);
-        };
+    /* ══════════════════════════════════════════
+       INIT
+    ══════════════════════════════════════════ */
+    window.onload = function() {
+        initMap();
+        renderSidebarContent();
+        loadDevices();
+        refreshLocations();
+        setInterval(refreshLocations, 5 * 60 * 1000);
+    };
     </script>
 </body>
 </html>

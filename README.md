@@ -17,7 +17,8 @@ A user-friendly vibe-coded web interface for tracking your Flipper Zero devices 
 2. **.keys file** generated using the Find My Flipper repository
 3. **Apple ID** for authentication
 4. **Anisette server** for spoofing
-5. **Python** and **pip**
+5. **[Docker Desktop](https://www.docker.com/products/docker-desktop/)** for the Anisette server
+6. **Python** and **pip**
 
 ### Setting up Anisette Server
 
@@ -48,7 +49,7 @@ python -m venv venv
 # Linux/macOS
 source venv/bin/activate
 # Windows
-venv/Scripts/activate.bat
+venv\Scripts\activate.bat
 ```
 
 4. **Install dependencies:**
