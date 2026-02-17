@@ -153,7 +153,6 @@ def fetch_location_reports(hours=24):
         )
         
         if r.status_code == 401:
-            # Auth expired, need to re-authenticate
             return {'error': 'Authentication expired', 'status': 401}
         
         if r.status_code != 200:
@@ -303,6 +302,42 @@ def rename_device():
     
     set_device_name(device_id, new_name)
     return jsonify({'success': True, 'message': 'Device renamed successfully'})
+
+@app.route('/api/delete_device', methods=['POST'])
+def delete_device():
+    """
+    Delete a device: removes its .keys file from disk and clears any
+    custom name stored in the database.  Historical report rows are left
+    intact (they no longer decode without the key anyway).
+    """
+    data = request.get_json()
+    device_id = data.get('device_id')   # this is the filename stem (original_name)
+
+    if not device_id:
+        return jsonify({'success': False, 'message': 'Missing device_id'}), 400
+
+    # Sanitise: only allow the bare filename, no path traversal
+    safe_name = secure_filename(device_id)
+    if not safe_name:
+        return jsonify({'success': False, 'message': 'Invalid device name'}), 400
+
+    keys_path = os.path.join(app.config['UPLOAD_FOLDER'], safe_name + '.keys')
+
+    if not os.path.exists(keys_path):
+        return jsonify({'success': False, 'message': 'Device key file not found'}), 404
+
+    # 1. Delete the .keys file
+    os.remove(keys_path)
+
+    # 2. Remove any custom name entry from the DB
+    db_path = os.path.join(app.config['UPLOAD_FOLDER'], 'reports.db')
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM device_names WHERE device_id = ?', (device_id,))
+    conn.commit()
+    conn.close()
+
+    return jsonify({'success': True, 'message': f'{device_id} deleted'})
 
 @app.route('/api/locations')
 def get_locations():
