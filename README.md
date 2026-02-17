@@ -1,4 +1,4 @@
-# Find My Flipper - Web Interface
+# 🐬 Find My Flipper - Web Interface
 
 A user-friendly vibe-coded web interface for tracking your Flipper Zero devices using Apple's Find My network.
 
